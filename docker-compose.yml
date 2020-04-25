@@ -1,0 +1,14 @@
+version: "3"
+services:
+  thisiscc: &thisiscc
+    build: .
+    volumes:
+      - .:/thisiscc
+    working_dir: /thisiscc
+  test:
+    <<: *thisiscc
+    command: >
+      bash -c '
+        make
+        make test
+      '
