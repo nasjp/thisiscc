@@ -18,6 +18,7 @@ struct Token {
   Token *next;
   int val;
   char *str;
+  int len;
 };
 
 Token *token;
@@ -45,15 +46,17 @@ void error(char *fmt, ...) {
   exit(1);
 }
 
-bool consume(char op) {
-  if (token->kind != TK_RESERVED || token->str[0] != op)
+bool consume(char *op) {
+  if (token->kind != TK_RESERVED || strlen(op) != token->len ||
+      memcmp(token->str, op, token->len))
     return false;
   token = token->next;
   return true;
 }
 
-void expect(char op) {
-  if (token->kind != TK_RESERVED || token->str[0] != op)
+void expect(char *op) {
+  if (token->kind != TK_RESERVED || strlen(op) != token->len ||
+      memcmp(token->str, op, token->len))
     error_at(token->str, "'%c'ではありません。\n", op);
   token = token->next;
 }
@@ -74,6 +77,10 @@ typedef enum {
   ND_SUB,
   ND_MUL,
   ND_DIV,
+  ND_EQ,
+  ND_NE,
+  ND_LT,
+  ND_LE,
   ND_NUM,
 } NodeKind;
 
@@ -102,18 +109,61 @@ Node *new_node_num(int val) {
 }
 
 Node *expr();
+Node *equality();
+Node *relational();
+Node *add();
 Node *mul();
 Node *unary();
 Node *primary();
 
-Node *expr() {
+Node *expr() { return equality(); }
+
+Node *equality() {
+  Node *node = relational();
+  for (;;) {
+    if (consume("==")) {
+      node = new_node(ND_EQ, node, relational());
+      continue;
+    }
+    if (consume("!=")) {
+      node = new_node(ND_NE, node, relational());
+      continue;
+    }
+    return node;
+  }
+}
+
+Node *relational() {
+  Node *node = add();
+  for (;;) {
+    if (consume("<=")) {
+      node = new_node(ND_LE, node, add());
+      continue;
+    }
+    if (consume(">=")) {
+      node = new_node(ND_LE, add(), node);
+      continue;
+    }
+    if (consume("<")) {
+      node = new_node(ND_LT, node, add());
+      continue;
+    }
+    if (consume(">")) {
+      node = new_node(ND_LT, add(), node);
+      continue;
+    }
+    return node;
+  }
+}
+
+Node *add() {
   Node *node = mul();
   for (;;) {
-    if (consume('+')) {
+    if (consume("+")) {
       node = new_node(ND_ADD, node, mul());
       continue;
     }
-    if (consume('-')) {
+    if (consume("-")) {
       node = new_node(ND_SUB, node, mul());
       continue;
     }
@@ -124,11 +174,11 @@ Node *expr() {
 Node *mul() {
   Node *node = unary();
   for (;;) {
-    if (consume('*')) {
+    if (consume("*")) {
       node = new_node(ND_MUL, node, unary());
       continue;
     }
-    if (consume('/')) {
+    if (consume("/")) {
       node = new_node(ND_DIV, node, unary());
       continue;
     }
@@ -137,31 +187,32 @@ Node *mul() {
 }
 
 Node *unary() {
-  if (consume('+'))
+  if (consume("+"))
     return primary();
-
-  if (consume('-'))
+  if (consume("-"))
     return new_node(ND_SUB, new_node_num(0), primary());
-
   return primary();
 }
 
 Node *primary() {
-  if (consume('(')) {
+  if (consume("(")) {
     Node *node = expr();
-    expect(')');
+    expect(")");
     return node;
   }
   return new_node_num(expect_number());
 }
 
-Token *new_token(TokenKind kind, Token *cur, char *str) {
+Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
   tok->str = str;
+  tok->len = len;
   cur->next = tok;
   return tok;
 }
+
+bool startswith(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
 
 Token *tokenize(char *p) {
   Token head;
@@ -174,21 +225,30 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("+-*/()", *p)) {
-      cur = new_token(TK_RESERVED, cur, p++);
+    if (startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") ||
+        startswith(p, ">=")) {
+      cur = new_token(TK_RESERVED, cur, p, 2);
+      p += 2;
+      continue;
+    }
+
+    if (strchr("+-*/()<>", *p)) {
+      cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
 
     if (isdigit(*p)) {
-      cur = new_token(TK_NUM, cur, p);
+      cur = new_token(TK_NUM, cur, p, 0);
+      char *q = p;
       cur->val = strtol(p, &p, 10);
+      cur->len = p - q;
       continue;
     }
 
     error_at(p, "トークナイズできません");
   }
 
-  new_token(TK_EOF, cur, p);
+  new_token(TK_EOF, cur, p, 0);
   return head.next;
 }
 
@@ -217,6 +277,26 @@ void gen(Node *node) {
   case ND_DIV:
     printf("  cqo\n");
     printf("  idiv rdi\n");
+    break;
+  case ND_EQ:
+    printf("  cmp rax, rdi\n");
+    printf("  sete al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case ND_NE:
+    printf("  cmp rax, rdi\n");
+    printf("  setne al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case ND_LT:
+    printf("  cmp rax, rdi\n");
+    printf("  setl al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case ND_LE:
+    printf("  cmp rax, rdi\n");
+    printf("  setle al\n");
+    printf("  movzb rax, al\n");
     break;
   }
 
