@@ -51,6 +51,38 @@ Node *new_node_num(int val) {
   return node;
 }
 
+typedef struct LVar LVar;
+
+struct LVar {
+  LVar *next;
+  char *name;
+  int len;
+  int offset;
+};
+
+LVar *locals;
+
+int offset = 0;
+
+LVar *new_lvar(char *name) {
+  LVar *var = calloc(1, sizeof(LVar));
+  var->offset = offset;
+  offset += 8;
+  var->name = name;
+  var->len = strlen(name);
+  var->next = locals;
+  locals = var;
+  return var;
+}
+
+LVar *find_lvar(Token *tok) {
+  for (LVar *var = locals; var; var = var->next)
+    if (strlen(var->name) == tok->len &&
+        !strncmp(tok->str, var->name, tok->len))
+      return var;
+  return NULL;
+}
+
 void program();
 Node *stmt();
 Node *expr();
@@ -174,7 +206,14 @@ Node *primary() {
   if (tok) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
-    node->offset = (tok->str[0] - 'a' + 1) * 8;
+
+    LVar *lvar = find_lvar(tok);
+    if (!lvar) {
+      lvar = new_lvar(strndup(tok->str, tok->len));
+      node->offset = lvar->offset;
+      locals = lvar;
+    }
+    node->offset = lvar->offset;
     return node;
   }
   return new_node_num(expect_number());
