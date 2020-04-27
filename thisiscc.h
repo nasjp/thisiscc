@@ -9,6 +9,7 @@ extern char *user_input;
 
 typedef enum {
   TK_RESERVED,
+  TK_IDENT,
   TK_NUM,
   TK_EOF,
 } TokenKind;
@@ -35,6 +36,8 @@ typedef enum {
   ND_LT,
   ND_LE,
   ND_NUM,
+  ND_ASSIGN,
+  ND_LVAR,
 } NodeKind;
 
 typedef struct Node Node;
@@ -44,9 +47,12 @@ struct Node {
   Node *lhs;
   Node *rhs;
   int val;
+  int offset;
 };
 
-Node *expr();
+extern Node *code[100];
+
+void program();
 Token *tokenize(char *p);
 void codegen(Node *node);
 
