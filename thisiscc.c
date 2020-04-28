@@ -8,22 +8,16 @@ int main(int argc, char **argv) {
 
   user_input = argv[1];
   token = tokenize(user_input);
-  program();
+  Function *prog = program();
 
-  printf(".intel_syntax noprefix\n");
-  printf(".global main\n");
-  printf("main:\n");
-
-  printf("  push rbp\n");
-  printf("  mov rbp, rsp\n");
-  printf("  sub rsp, 208\n");
-
-  for (int i = 0; code[i]; i++) {
-    codegen(code[i]);
-    printf("  pop rax\n");
+  int offset = 0;
+  for (LVar *var = prog->locals; var; var = var->next) {
+    offset += 8;
+    var->offset = offset;
   }
-  printf("  mov rsp, rbp\n");
-  printf("  pop rbp\n");
-  printf("  ret\n");
+  prog->stack_size = offset;
+
+  codegen(prog);
+
   return 0;
 }

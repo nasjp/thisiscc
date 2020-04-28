@@ -50,15 +50,6 @@ Node *new_node_num(int val) {
   return node;
 }
 
-typedef struct LVar LVar;
-
-struct LVar {
-  LVar *next;
-  char *name;
-  int len;
-  int offset;
-};
-
 LVar *locals;
 
 int offset = 0;
@@ -82,7 +73,7 @@ LVar *find_lvar(Token *tok) {
   return NULL;
 }
 
-void program();
+Function *program();
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -93,13 +84,18 @@ Node *mul();
 Node *unary();
 Node *primary();
 
-Node *code[100];
-
-void program() {
-  int i = 0;
-  while (!at_eof())
-    code[i++] = stmt();
-  code[i] = NULL;
+Function *program(void) {
+  locals = NULL;
+  Node *head = new_node(0, NULL, NULL);
+  Node *cur = head;
+  while (!at_eof()) {
+    cur->next = stmt();
+    cur = cur->next;
+  }
+  Function *prog = calloc(1, sizeof(Function));
+  prog->node = head->next;
+  prog->locals = locals;
+  return prog;
 }
 
 Node *stmt() {

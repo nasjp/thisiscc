@@ -11,7 +11,7 @@ void gen_lval(Node *node) {
 
 int labelseq = 0;
 
-void codegen(Node *node) {
+void gen(Node *node) {
   switch (node->kind) {
   case ND_NUM:
     printf("  push %d\n", node->val);
@@ -24,14 +24,14 @@ void codegen(Node *node) {
     return;
   case ND_ASSIGN:
     gen_lval(node->lhs);
-    codegen(node->rhs);
+    gen(node->rhs);
     printf("  pop rdi\n");
     printf("  pop rax\n");
     printf("  mov [rax], rdi\n");
     printf("  push rdi\n");
     return;
   case ND_RETURN:
-    codegen(node->lhs);
+    gen(node->lhs);
     printf("  pop rax\n");
     printf("  mov rsp, rbp\n");
     printf("  pop rbp\n");
@@ -40,21 +40,21 @@ void codegen(Node *node) {
   case ND_IF: {
     int seq = ++labelseq;
     if (node->els) {
-      codegen(node->cond);
+      gen(node->cond);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
       printf("  je  .L.else.%d\n", seq);
-      codegen(node->then);
+      gen(node->then);
       printf("  jmp .L.end.%d\n", seq);
       printf(".L.else.%d:\n", seq);
-      codegen(node->els);
+      gen(node->els);
       printf(".L.end.%d:\n", seq);
     } else {
-      codegen(node->cond);
+      gen(node->cond);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
       printf("  je  .L.end.%d\n", seq);
-      codegen(node->then);
+      gen(node->then);
       printf(".L.end.%d:\n", seq);
     }
     return;
@@ -62,11 +62,11 @@ void codegen(Node *node) {
   case ND_WHILE: {
     int seq = ++labelseq;
     printf(".L.begin.%d:\n", seq);
-    codegen(node->cond);
+    gen(node->cond);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
     printf("  je  .L.end.%d\n", seq);
-    codegen(node->then);
+    gen(node->then);
     printf("  jmp .L.begin.%d\n", seq);
     printf(".L.end.%d:\n", seq);
     return;
@@ -74,29 +74,29 @@ void codegen(Node *node) {
   case ND_FOR: {
     int seq = ++labelseq;
     if (node->init)
-      codegen(node->init);
+      gen(node->init);
     printf(".L.begin.%d:\n", seq);
     if (node->cond) {
-      codegen(node->cond);
+      gen(node->cond);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
       printf("  je  .L.end.%d\n", seq);
     }
-    codegen(node->then);
+    gen(node->then);
     if (node->inc)
-      codegen(node->inc);
+      gen(node->inc);
     printf("  jmp .L.begin.%d\n", seq);
     printf(".L.end.%d:\n", seq);
     return;
   }
   case ND_BLOCK:
     for (Node *n = node->body; n; n = n->next)
-      codegen(n);
+      gen(n);
     return;
   }
 
-  codegen(node->lhs);
-  codegen(node->rhs);
+  gen(node->lhs);
+  gen(node->rhs);
 
   printf("  pop rdi\n");
   printf("  pop rax\n");
@@ -138,4 +138,22 @@ void codegen(Node *node) {
   }
 
   printf("  push rax\n");
+}
+
+void codegen(Function *prog) {
+  printf(".intel_syntax noprefix\n");
+  printf(".global main\n");
+  printf("main:\n");
+
+  printf("  push rbp\n");
+  printf("  mov rbp, rsp\n");
+  printf("  sub rsp, %d\n", prog->stack_size);
+
+  for (Node *node = prog->node; node; node = node->next)
+    gen(node);
+
+  printf(".L.return:\n");
+  printf("  mov rsp, rbp\n");
+  printf("  pop rbp\n");
+  printf("  ret\n");
 }

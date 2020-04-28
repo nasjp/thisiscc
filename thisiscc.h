@@ -63,11 +63,26 @@ struct Node {
   int offset;
 };
 
-extern Node *code[100];
+typedef struct LVar LVar;
 
-void program();
+struct LVar {
+  LVar *next;
+  char *name;
+  int len;
+  int offset;
+};
+
+typedef struct Function Function;
+
+struct Function {
+  Node *node;
+  LVar *locals;
+  int stack_size;
+};
+
+Function *program();
 Token *tokenize(char *p);
-void codegen(Node *node);
+void codegen(Function *prog);
 
 void error_at(char *loc, char *fmt, ...);
 void error(char *fmt, ...);
