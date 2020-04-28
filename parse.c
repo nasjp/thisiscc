@@ -3,8 +3,8 @@
 Token *token;
 
 bool consume(char *op) {
-  if (token->kind != TK_RESERVED || strlen(op) != token->len ||
-      memcmp(token->str, op, token->len))
+  if (!(token->kind == TK_RESERVED || token->kind == TK_RETURN) ||
+      strlen(op) != token->len || memcmp(token->str, op, token->len))
     return false;
   token = token->next;
   return true;
@@ -21,16 +21,15 @@ Token *consume_ident() {
 int expect_number() {
   if (token->kind != TK_NUM)
     error_at(token->str, "数ではありません");
-
   int val = token->val;
   token = token->next;
   return val;
 }
 
 void expect(char *op) {
-  if (token->kind != TK_RESERVED || strlen(op) != token->len ||
-      memcmp(token->str, op, token->len))
-    error_at(token->str, "'%c'ではありません。\n", op);
+  if (!(token->kind == TK_RESERVED || token->kind == TK_RETURN) ||
+      strlen(op) != token->len || memcmp(token->str, op, token->len))
+    error_at(token->str, "'%s'ではありません。\n", op);
   token = token->next;
 }
 
@@ -104,7 +103,12 @@ void program() {
 }
 
 Node *stmt() {
-  Node *node = expr();
+  Node *node;
+  if (consume("return")) {
+    node = new_node(ND_RETURN, expr(), NULL);
+  } else {
+    node = expr();
+  }
   expect(";");
   return node;
 }

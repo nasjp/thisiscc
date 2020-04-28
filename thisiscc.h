@@ -12,6 +12,7 @@ typedef enum {
   TK_RESERVED,
   TK_IDENT,
   TK_NUM,
+  TK_RETURN,
   TK_EOF,
 } TokenKind;
 
@@ -39,6 +40,7 @@ typedef enum {
   ND_NUM,
   ND_ASSIGN,
   ND_LVAR,
+  ND_RETURN,
 } NodeKind;
 
 typedef struct Node Node;
@@ -59,3 +61,4 @@ void codegen(Node *node);
 
 void error_at(char *loc, char *fmt, ...);
 void error(char *fmt, ...);
+void log_stderror(char *fmt, ...);
