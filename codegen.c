@@ -10,6 +10,7 @@ void gen_lval(Node *node) {
 }
 
 int labelseq = 0;
+char *funcname;
 
 char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
@@ -35,9 +36,7 @@ void gen(Node *node) {
   case ND_RETURN:
     gen(node->lhs);
     printf("  pop rax\n");
-    printf("  mov rsp, rbp\n");
-    printf("  pop rbp\n");
-    printf("  ret\n");
+    printf("  jmp .L.return.%s\n", funcname);
     return;
   case ND_IF: {
     int seq = ++labelseq;
@@ -168,18 +167,22 @@ void gen(Node *node) {
 
 void codegen(Function *prog) {
   printf(".intel_syntax noprefix\n");
-  printf(".global main\n");
-  printf("main:\n");
 
-  printf("  push rbp\n");
-  printf("  mov rbp, rsp\n");
-  printf("  sub rsp, %d\n", prog->stack_size);
+  for (Function *func = prog; func; func = func->next) {
+    printf(".global %s\n", func->name);
+    printf("%s:\n", func->name);
+    funcname = func->name;
 
-  for (Node *node = prog->node; node; node = node->next)
-    gen(node);
+    printf("  push rbp\n");
+    printf("  mov rbp, rsp\n");
+    printf("  sub rsp, %d\n", func->stack_size);
 
-  printf(".L.return:\n");
-  printf("  mov rsp, rbp\n");
-  printf("  pop rbp\n");
-  printf("  ret\n");
+    for (Node *node = func->node; node; node = node->next)
+      gen(node);
+
+    printf(".L.return.%s:\n", funcname);
+    printf("  mov rsp, rbp\n");
+    printf("  pop rbp\n");
+    printf("  ret\n");
+  }
 }

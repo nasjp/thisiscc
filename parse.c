@@ -26,6 +26,14 @@ int expect_number() {
   return val;
 }
 
+char *expect_ident(void) {
+  if (token->kind != TK_IDENT)
+    error_at(token->str, "識別子ではありません");
+  char *s = strndup(token->str, token->len);
+  token = token->next;
+  return s;
+}
+
 void expect(char *op) {
   if (!(token->kind == TK_RESERVED) || strlen(op) != token->len ||
       memcmp(token->str, op, token->len))
@@ -74,6 +82,7 @@ LVar *find_lvar(Token *tok) {
 }
 
 Function *program();
+Function *function();
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -85,18 +94,34 @@ Node *unary();
 Node *primary();
 
 Function *program(void) {
+  Function *head = calloc(1, sizeof(Function));
+  Function *cur = head;
+  while (!at_eof()) {
+    cur->next = function();
+    cur = cur->next;
+  }
+
+  return head->next;
+}
+
+Function *function() {
   locals = NULL;
+  char *name = expect_ident();
+  expect("(");
+  expect(")");
+  expect("{");
   Node *head = new_node(0, NULL, NULL);
   Node *cur = head;
-  while (!at_eof()) {
+  while (!consume(("}"))) {
     cur->next = stmt();
     cur = cur->next;
   }
-  Function *prog = calloc(1, sizeof(Function));
-  prog->node = head->next;
-  prog->locals = locals;
-  return prog;
-}
+  Function *func = calloc(1, sizeof(Function));
+  func->name = name;
+  func->node = head->next;
+  func->locals = locals;
+  return func;
+};
 
 Node *stmt() {
   Node *node;
