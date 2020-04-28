@@ -3,8 +3,8 @@
 Token *token;
 
 bool consume(char *op) {
-  if (!(token->kind == TK_RESERVED || token->kind == TK_RETURN) ||
-      strlen(op) != token->len || memcmp(token->str, op, token->len))
+  if (!(token->kind == TK_RESERVED) || strlen(op) != token->len ||
+      memcmp(token->str, op, token->len))
     return false;
   token = token->next;
   return true;
@@ -27,8 +27,8 @@ int expect_number() {
 }
 
 void expect(char *op) {
-  if (!(token->kind == TK_RESERVED || token->kind == TK_RETURN) ||
-      strlen(op) != token->len || memcmp(token->str, op, token->len))
+  if (!(token->kind == TK_RESERVED) || strlen(op) != token->len ||
+      memcmp(token->str, op, token->len))
     error_at(token->str, "'%s'ではありません。\n", op);
   token = token->next;
 }
