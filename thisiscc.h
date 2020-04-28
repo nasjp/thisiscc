@@ -60,6 +60,7 @@ struct Node {
   Node *init;
   Node *inc;
   Node *body;
+  Node *args;
   char *funcname;
   int val;
   int offset;
