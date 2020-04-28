@@ -256,6 +256,12 @@ Node *primary() {
 
   Token *tok = consume_ident();
   if (tok) {
+    if (consume("(")) {
+      expect(")");
+      Node *node = new_node(ND_FUNCALL, NULL, NULL);
+      node->funcname = strndup(tok->str, tok->len);
+      return node;
+    }
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
 
