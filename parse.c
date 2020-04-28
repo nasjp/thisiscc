@@ -143,6 +143,19 @@ Node *stmt() {
     return node;
   }
 
+  if (consume("{")) {
+    Node *head = new_node(0, NULL, NULL);
+    Node *cur = head;
+    while (!consume("}")) {
+      cur->next = stmt();
+      cur = cur->next;
+    }
+
+    Node *node = new_node(ND_BLOCK, NULL, NULL);
+    node->body = head->next;
+    return node;
+  }
+
   if (consume("return")) {
     node = new_node(ND_RETURN, expr(), NULL);
   } else {
