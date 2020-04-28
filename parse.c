@@ -124,6 +124,25 @@ Node *stmt() {
     return node;
   }
 
+  if (consume("for")) {
+    Node *node = new_node(ND_FOR, NULL, NULL);
+    expect("(");
+    if (!consume(";")) {
+      node->init = expr();
+      expect(";");
+    }
+    if (!consume(";")) {
+      node->cond = expr();
+      expect(";");
+    }
+    if (!consume(")")) {
+      node->inc = expr();
+      expect(")");
+    }
+    node->then = stmt();
+    return node;
+  }
+
   if (consume("return")) {
     node = new_node(ND_RETURN, expr(), NULL);
   } else {
