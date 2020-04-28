@@ -104,6 +104,17 @@ void program() {
 
 Node *stmt() {
   Node *node;
+  if (consume("if")) {
+    Node *node = new_node(ND_IF, NULL, NULL);
+    expect("(");
+    node->cond = expr();
+    expect(")");
+    node->then = stmt();
+    if (consume("else"))
+      node->els = stmt();
+    return node;
+  }
+
   if (consume("return")) {
     node = new_node(ND_RETURN, expr(), NULL);
   } else {

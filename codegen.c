@@ -9,6 +9,8 @@ void gen_lval(Node *node) {
   printf("  push rax\n");
 }
 
+int labelseq = 0;
+
 void codegen(Node *node) {
   switch (node->kind) {
   case ND_NUM:
@@ -35,6 +37,28 @@ void codegen(Node *node) {
     printf("  pop rbp\n");
     printf("  ret\n");
     return;
+  case ND_IF: {
+    int seq = ++labelseq;
+    if (node->els) {
+      codegen(node->cond);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je  .L.else.%d\n", seq);
+      codegen(node->then);
+      printf("  jmp .L.end.%d\n", seq);
+      printf(".L.else.%d:\n", seq);
+      codegen(node->els);
+      printf(".L.end.%d:\n", seq);
+    } else {
+      codegen(node->cond);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je  .L.end.%d\n", seq);
+      codegen(node->then);
+      printf(".L.end.%d:\n", seq);
+    }
+    return;
+  }
   }
 
   codegen(node->lhs);
