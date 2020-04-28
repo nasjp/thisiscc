@@ -4,12 +4,11 @@ void gen_lval(Node *node) {
   if (node->kind != ND_LVAR)
     error("代入の左辺値が変数ではありません");
 
-  printf("  mov rax, rbp\n");
-  printf("  sub rax, %d\n", node->offset);
+  printf("  lea rax, [rbp-%d]\n", node->var->offset);
   printf("  push rax\n");
 }
 
-int labelseq = 0;
+int labelseq = 1;
 char *funcname;
 
 char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
@@ -39,7 +38,7 @@ void gen(Node *node) {
     printf("  jmp .L.return.%s\n", funcname);
     return;
   case ND_IF: {
-    int seq = ++labelseq;
+    int seq = labelseq++;
     if (node->els) {
       gen(node->cond);
       printf("  pop rax\n");
@@ -176,6 +175,12 @@ void codegen(Function *prog) {
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
     printf("  sub rsp, %d\n", func->stack_size);
+
+    int i = 0;
+    for (VarList *vl = func->params; vl; vl = vl->next) {
+      Var *var = vl->var;
+      printf("  mov [rbp-%d], %s\n", var->offset, argreg[i++]);
+    }
 
     for (Node *node = func->node; node; node = node->next)
       gen(node);

@@ -47,6 +47,15 @@ typedef enum {
   ND_FUNCALL,
 } NodeKind;
 
+typedef struct Var Var;
+
+struct Var {
+  Var *next;
+  char *name;
+  int len;
+  int offset;
+};
+
 typedef struct Node Node;
 
 struct Node {
@@ -61,18 +70,16 @@ struct Node {
   Node *inc;
   Node *body;
   Node *args;
+  Var *var;
   char *funcname;
   int val;
-  int offset;
 };
 
-typedef struct LVar LVar;
+typedef struct VarList VarList;
 
-struct LVar {
-  LVar *next;
-  char *name;
-  int len;
-  int offset;
+struct VarList {
+  VarList *next;
+  Var *var;
 };
 
 typedef struct Function Function;
@@ -80,8 +87,9 @@ typedef struct Function Function;
 struct Function {
   Function *next;
   char *name;
+  VarList *params;
   Node *node;
-  LVar *locals;
+  VarList *locals;
   int stack_size;
 };
 

@@ -58,27 +58,44 @@ Node *new_node_num(int val) {
   return node;
 }
 
-LVar *locals;
+VarList *locals;
 
-int offset = 0;
-
-LVar *new_lvar(char *name) {
-  LVar *var = calloc(1, sizeof(LVar));
-  var->offset = offset;
-  offset += 8;
+Var *new_var(char *name) {
+  Var *var = calloc(1, sizeof(Var));
   var->name = name;
-  var->len = strlen(name);
-  var->next = locals;
-  locals = var;
+  VarList *vl = calloc(1, sizeof(VarList));
+  vl->var = var;
+  vl->next = locals;
+  locals = vl;
   return var;
 }
 
-LVar *find_lvar(Token *tok) {
-  for (LVar *var = locals; var; var = var->next)
+Var *find_var(Token *tok) {
+  for (VarList *vl = locals; vl; vl = vl->next) {
+    Var *var = vl->var;
     if (strlen(var->name) == tok->len &&
         !strncmp(tok->str, var->name, tok->len))
       return var;
+  }
   return NULL;
+}
+
+VarList *read_func_params() {
+  if (consume(")"))
+    return NULL;
+
+  VarList *head = calloc(1, sizeof(VarList));
+  head->var = new_var(expect_ident());
+  VarList *cur = head;
+
+  while (!consume(")")) {
+    expect(",");
+    cur->next = calloc(1, sizeof(VarList));
+    cur->next->var = new_var(expect_ident());
+    cur = cur->next;
+  }
+
+  return head;
 }
 
 Function *program();
@@ -100,15 +117,15 @@ Function *program(void) {
     cur->next = function();
     cur = cur->next;
   }
-
   return head->next;
 }
 
 Function *function() {
   locals = NULL;
-  char *name = expect_ident();
+  Function *func = calloc(1, sizeof(Function));
+  func->name = expect_ident();
   expect("(");
-  expect(")");
+  func->params = read_func_params();
   expect("{");
   Node *head = new_node(0, NULL, NULL);
   Node *cur = head;
@@ -116,8 +133,6 @@ Function *function() {
     cur->next = stmt();
     cur = cur->next;
   }
-  Function *func = calloc(1, sizeof(Function));
-  func->name = name;
   func->node = head->next;
   func->locals = locals;
   return func;
@@ -301,16 +316,13 @@ Node *primary() {
       node->args = func_args();
       return node;
     }
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_LVAR;
+    Node *node = new_node(ND_LVAR, NULL, NULL);
 
-    LVar *lvar = find_lvar(tok);
-    if (!lvar) {
-      lvar = new_lvar(strndup(tok->str, tok->len));
-      node->offset = lvar->offset;
-      locals = lvar;
-    }
-    node->offset = lvar->offset;
+    Var *var = find_var(tok);
+    if (!var)
+      var = new_var(strndup(tok->str, tok->len));
+
+    node->var = var;
     return node;
   }
   return new_node_num(expect_number());
