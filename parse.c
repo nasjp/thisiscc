@@ -115,6 +115,15 @@ Node *stmt() {
     return node;
   }
 
+  if (consume("while")) {
+    Node *node = new_node(ND_WHILE, NULL, NULL);
+    expect("(");
+    node->cond = expr();
+    expect(")");
+    node->then = stmt();
+    return node;
+  }
+
   if (consume("return")) {
     node = new_node(ND_RETURN, expr(), NULL);
   } else {
